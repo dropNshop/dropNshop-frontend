@@ -1,39 +1,85 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import UpdateProductModal from './UpdateProductModal';
 import { deleteProduct } from '../services/api';
 import toast from 'react-hot-toast';
 
-export default function ProductsTable({ products, onProductUpdate }) {
+// ============ Constants ============
+const TABLE_HEADERS = [
+  { key: 'image', label: 'Image', sortable: false },
+  { key: 'name', label: 'Name', sortable: true },
+  { key: 'category', label: 'Category', sortable: true },
+  { key: 'price', label: 'Price', sortable: true },
+  { key: 'stock', label: 'Stock', sortable: true },
+  { key: 'actions', label: 'Actions', sortable: false }
+];
+
+// ============ Component ============
+export default function ProductsTable({ products, onProductUpdate, onSort, sortConfig }) {
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
+  const [deletingProductIds, setDeletingProductIds] = useState(new Set());
 
-  const handleUpdateClick = (product) => {
+  const handleUpdateClick = useCallback((product) => {
     setSelectedProduct(product);
     setIsUpdateModalOpen(true);
-  };
+  }, []);
 
-  const handleUpdateSuccess = () => {
+  const handleUpdateSuccess = useCallback(() => {
     setIsUpdateModalOpen(false);
     setSelectedProduct(null);
     onProductUpdate();
-  };
+  }, [onProductUpdate]);
 
-  const handleDeleteClick = async (product) => {
-    if (window.confirm(`Are you sure you want to delete ${product.name}?`)) {
-      try {
-        setDeleting(true);
-        await deleteProduct(product.id);
-        toast.success('Product deleted successfully');
-        onProductUpdate();
-      } catch (error) {
-        toast.error(error.message || 'Failed to delete product');
-      } finally {
-        setDeleting(false);
-      }
+  const handleDeleteClick = useCallback(async (product) => {
+    if (!window.confirm(`Are you sure you want to delete ${product.name}?`)) {
+      return;
     }
-  };
+
+    setDeletingProductIds(prev => new Set([...prev, product.id]));
+    
+    try {
+      await deleteProduct(product.id);
+      toast.success('Product deleted successfully');
+      onProductUpdate();
+    } catch (error) {
+      toast.error(error.message || 'Failed to delete product');
+    } finally {
+      setDeletingProductIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(product.id);
+        return newSet;
+      });
+    }
+  }, [onProductUpdate]);
+
+  const renderSortIcon = useCallback((header) => {
+    if (!header.sortable) return null;
+    
+    const isActive = sortConfig.key === header.key;
+    const direction = isActive ? sortConfig.direction : null;
+
+    return (
+      <span className="ml-2 inline-flex flex-col">
+        <svg 
+          className={`w-2 h-2 ${isActive && direction === 'asc' ? 'text-indigo-600' : 'text-gray-400'}`}
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+        </svg>
+        <svg 
+          className={`w-2 h-2 ${isActive && direction === 'desc' ? 'text-indigo-600' : 'text-gray-400'}`}
+          fill="none" 
+          viewBox="0 0 24 24" 
+          stroke="currentColor"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </span>
+    );
+  }, [sortConfig]);
 
   return (
     <>
@@ -42,24 +88,20 @@ export default function ProductsTable({ products, onProductUpdate }) {
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Image
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Category
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Price
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Stock
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
+                {TABLE_HEADERS.map(header => (
+                  <th
+                    key={header.key}
+                    onClick={() => header.sortable && onSort(header.key)}
+                    className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${
+                      header.sortable ? 'cursor-pointer hover:bg-gray-100' : ''
+                    }`}
+                  >
+                    <div className="flex items-center">
+                      {header.label}
+                      {renderSortIcon(header)}
+                    </div>
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -71,6 +113,10 @@ export default function ProductsTable({ products, onProductUpdate }) {
                         src={product.image_url}
                         alt={product.name}
                         className="h-10 w-10 rounded-full object-cover"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = 'https://via.placeholder.com/40?text=NA';
+                        }}
                       />
                     ) : (
                       <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
@@ -80,34 +126,61 @@ export default function ProductsTable({ products, onProductUpdate }) {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{product.name}</div>
-                    <div className="text-sm text-gray-500">{product.description}</div>
+                    {product.description && (
+                      <div className="text-sm text-gray-500 truncate max-w-xs" title={product.description}>
+                        {product.description}
+                      </div>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {product.category_id}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    ${parseFloat(product.price).toFixed(2)}
+                    Rs. {parseFloat(product.price).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {product.stock_quantity} {product.unit}
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      product.stock_quantity > 10 ? 'bg-green-100 text-green-800' : 
+                      product.stock_quantity > 0 ? 'bg-yellow-100 text-yellow-800' : 
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {product.stock_quantity} {product.unit}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <button
                       onClick={() => handleUpdateClick(product)}
-                      className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded-md hover:bg-indigo-100 transition-colors"
+                      className="text-indigo-600 hover:text-indigo-900 bg-indigo-50 px-3 py-1 rounded-md hover:bg-indigo-100 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleDeleteClick(product)}
-                      disabled={deleting}
-                      className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50"
+                      disabled={deletingProductIds.has(product.id)}
+                      className="text-red-600 hover:text-red-900 bg-red-50 px-3 py-1 rounded-md hover:bg-red-100 transition-colors disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
                     >
-                      Delete
+                      {deletingProductIds.has(product.id) ? (
+                        <span className="inline-flex items-center">
+                          <svg className="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                          Deleting...
+                        </span>
+                      ) : (
+                        'Delete'
+                      )}
                     </button>
                   </td>
                 </tr>
               ))}
+              {products.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-4 text-center text-sm text-gray-500">
+                    No products found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -138,4 +211,9 @@ ProductsTable.propTypes = {
     })
   ).isRequired,
   onProductUpdate: PropTypes.func.isRequired,
+  onSort: PropTypes.func.isRequired,
+  sortConfig: PropTypes.shape({
+    key: PropTypes.string.isRequired,
+    direction: PropTypes.oneOf(['asc', 'desc']).isRequired,
+  }).isRequired,
 }; 
