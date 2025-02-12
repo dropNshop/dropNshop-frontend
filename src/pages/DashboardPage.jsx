@@ -154,18 +154,18 @@ const MANUAL_TOP_PRODUCTS = [
 // ============ Data Processing Functions ============
 const processMonthlyData = () => {
   return [
-    { date: '1', sales: 1650000 },  // January
-    { date: '2', sales: 848000 },   // February (API data)
-    { date: '3', sales: 1820000 },  // March
-    { date: '4', sales: 1580000 },  // April
-    { date: '5', sales: 1750000 },  // May
-    { date: '6', sales: 1680000 },  // June
-    { date: '7', sales: 1920000 },  // July
-    { date: '8', sales: 1720000 },  // August
+    { date: '1', sales: 1850000 },  // January
+    { date: '2', sales: 1680000 },  // February
+    { date: '3', sales: 1920000 },  // March
+    { date: '4', sales: 1750000 },  // April
+    { date: '5', sales: 2150000 },  // May
+    { date: '6', sales: 1890000 },  // June
+    { date: '7', sales: 2250000 },  // July (Peak season)
+    { date: '8', sales: 1980000 },  // August
     { date: '9', sales: 1850000 },  // September
-    { date: '10', sales: 1780000 }, // October
-    { date: '11', sales: 5643000 }, // November (API data)
-    { date: '12', sales: 1880000 }  // December
+    { date: '10', sales: 1720000 }, // October
+    { date: '11', sales: 1680000 }, // November
+    { date: '12', sales: 2180000 }  // December (Holiday season)
   ];
 };
 
@@ -315,7 +315,7 @@ export default function DashboardPage() {
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.primary.text}`}>Total Sales</p>
               <p className="text-2xl font-bold text-white">
-                Rs. 20,000,000
+                Rs. 21,900,000
               </p>
               <p className={`text-xs ${COLORS.primary.textLight} mt-1`}>All time sales value</p>
             </div>
@@ -346,7 +346,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.success.text}`}>Average Order</p>
-              <p className="text-2xl font-bold text-white">Rs. 55,556</p>
+              <p className="text-2xl font-bold text-white">Rs. 2,283</p>
               <p className={`text-xs ${COLORS.success.textLight} mt-1`}>Per order value</p>
             </div>
           </div>
