@@ -3,6 +3,7 @@ import toast from 'react-hot-toast';
 
 // ============ Constants ============
 const API_BASE_URL = 'https://dropnshop-backend.onrender.com';
+// const API_BASE_URL = 'http://localhost:3100';
 const ML_API_BASE_URL = 'https://ml-flask-fri4.onrender.com';
 
 // ============ API Instances ============
@@ -176,7 +177,7 @@ export const addProduct = async (productData) => {
 
 export const updateProduct = async (id, productData) => {
   try {
-    const response = await api.put(`/api/admin/products/${id}`, productData);
+    const response = await api.put(`/api/products/${id}`, productData);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to update product');
@@ -185,7 +186,7 @@ export const updateProduct = async (id, productData) => {
 
 export const deleteProduct = async (id) => {
   try {
-    const response = await api.delete(`/api/admin/products/${id}`);
+    const response = await api.delete(`/api/products/${id}`);
     return response.data;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Failed to delete product');
