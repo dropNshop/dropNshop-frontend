@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line
+  ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, BarChart, Bar
 } from 'recharts';
 import toast from 'react-hot-toast';
 import { fetchMLDashboard, fetchMLStats, predictPrice, trainModel } from '../services/api';
@@ -44,6 +44,88 @@ const formatCurrency = (value) => {
   return `Rs. ${Number(value).toLocaleString('en-PK')}`;
 };
 
+// Forecasting Data Constants
+const CATEGORIES = {
+  DAIRY: 'Dairy',
+  FRUITS: 'Fruits',
+  GROCERIES: 'Groceries',
+  PHARMACY: 'Pharmacy',
+  VEGETABLES: 'Vegetables'
+};
+
+const CATEGORY_PRODUCTS = {
+  [CATEGORIES.DAIRY]: [
+    { name: 'Milk', unit: 'liters', brands: ['Olpers', 'Nestle MilkPak', 'Gourmet', 'Prema'] },
+    { name: 'Yogurt', unit: 'kg', brands: ['Nestle Fruita Vitals', 'Gourmet', 'Adams'] },
+    { name: 'Cheese', unit: 'kg', brands: ['Kraft', 'Nurpur', 'Adams'] },
+    { name: 'Butter', unit: 'kg', brands: ['Blue Band', 'Nurpur', 'Olpers'] },
+    { name: 'Cream', unit: 'liters', brands: ['Olpers', 'Nurpur', 'Gourmet'] }
+  ],
+  [CATEGORIES.FRUITS]: [
+    { name: 'Apples', unit: 'kg', brands: ['Quetta', 'Swat', 'Kashmir'] },
+    { name: 'Bananas', unit: 'dozen', brands: ['Sindh', 'Punjab'] },
+    { name: 'Oranges', unit: 'kg', brands: ['Kinnow', 'Blood Orange', 'Valencia'] },
+    { name: 'Mangoes', unit: 'kg', brands: ['Sindhri', 'Chaunsa', 'Anwar Ratol', 'Langra'] },
+    { name: 'Watermelon', unit: 'kg', brands: ['Punjab', 'Sindh'] }
+  ],
+  [CATEGORIES.GROCERIES]: [
+    { name: 'Rice (Basmati)', unit: 'kg', brands: ['Falak', 'Guard', 'Kernel'] },
+    { name: 'Cooking Oil', unit: 'liters', brands: ['Dalda', 'Sufi', 'Eva', 'Habib'] },
+    { name: 'Tea', unit: 'kg', brands: ['Lipton', 'Tapal', 'Vital', 'Supreme'] },
+    { name: 'Sugar', unit: 'kg', brands: ['Al-Arabia', 'Nishat'] },
+    { name: 'Flour (Atta)', unit: 'kg', brands: ['Sunridge', 'Bake Parlor', 'Fauji'] },
+    { name: 'Pulses (Daal)', unit: 'kg', brands: ['Mitchell\'s', 'National']}
+  ],
+  [CATEGORIES.PHARMACY]: [
+    { name: 'Pain Relievers', unit: 'packs', brands: ['Panadol', 'Brufen', 'Ponstan'] },
+    { name: 'Cold Medicine', unit: 'packs', brands: ['Actifed', 'Corex', 'Tyno'] },
+    { name: 'Vitamins', unit: 'bottles', brands: ['Centrum', 'GNC', 'Nutrifactor'] },
+    { name: 'First Aid', unit: 'kits', brands: ['PharmEvo', 'Medi-Aid', 'SafeCare'] },
+    { name: 'Sanitizers', unit: 'bottles', brands: ['Dettol', 'Safeguard', 'Lifebuoy'] }
+  ],
+  [CATEGORIES.VEGETABLES]: [
+    { name: 'Tomatoes', unit: 'kg', brands: ['Sindh Fresh', 'Punjab Fresh'] },
+    { name: 'Potatoes', unit: 'kg', brands: ['Swat', 'Hazara'] },
+    { name: 'Onions', unit: 'kg', brands: ['Sindh', 'Balochistan'] },
+    { name: 'Green Chilies', unit: 'kg', brands: ['Kunri', 'Sindh'] },
+    { name: 'Carrots', unit: 'kg', brands: ['Punjab', 'KPK'] }
+  ]
+};
+
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+// Generate realistic seasonal demand data with brand-specific adjustments
+const generateDemandData = (product, month, brand) => {
+  const baselineDemand = Math.floor(Math.random() * 50) + 50;
+  let seasonalMultiplier = 1;
+  let brandMultiplier = 1;
+
+  // Seasonal adjustments
+  if (product.toLowerCase().includes('cold') || product.toLowerCase().includes('ice')) {
+    seasonalMultiplier = [5,6,7,8].includes(month) ? 1.8 : 0.6;
+  } else if (product.toLowerCase().includes('tea')) {
+    seasonalMultiplier = [11,12,1,2].includes(month) ? 1.7 : 0.8;
+  } else if (product.toLowerCase().includes('mango')) {
+    seasonalMultiplier = [5,6,7].includes(month) ? 2 : 0.1;
+  } else if (product.toLowerCase().includes('sanitizer')) {
+    seasonalMultiplier = [3,4,5].includes(month) ? 1.5 : 1; // Higher in spring
+  }
+
+  // Brand popularity adjustments
+  if (brand) {
+    if (['Olpers', 'Nestle', 'Tapal', 'Dettol', 'Panadol'].some(b => brand.includes(b))) {
+      brandMultiplier = 1.3; // Popular brands
+    } else if (['Gourmet', 'Dalda', 'Lipton'].some(b => brand.includes(b))) {
+      brandMultiplier = 1.2; // Well-known brands
+    }
+  }
+
+  return Math.floor(baselineDemand * seasonalMultiplier * brandMultiplier);
+};
+
 export default function DashboardPage() {
   const [mlDashboard, setMLDashboard] = useState(null);
   const [mlStats, setMLStats] = useState(null);
@@ -58,10 +140,49 @@ export default function DashboardPage() {
   const [prediction, setPrediction] = useState(null);
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [selectedCategory, setSelectedCategory] = useState(CATEGORIES.GROCERIES);
+  const [forecastData, setForecastData] = useState([]);
+  const [viewMode, setViewMode] = useState('6months'); // '6months' or 'yearly'
+  const [selectedBrand, setSelectedBrand] = useState('all');
 
   useEffect(() => {
     fetchAllData();
   }, []);
+
+  useEffect(() => {
+    const generateForecastData = () => {
+      const currentMonth = new Date().getMonth();
+      const data = [];
+      const monthCount = viewMode === '6months' ? 6 : 12;
+
+      for (let i = 0; i < monthCount; i++) {
+        const monthIndex = (currentMonth + i) % 12;
+        const monthData = {
+          month: MONTHS[monthIndex],
+          monthIndex: monthIndex + 1
+        };
+
+        CATEGORY_PRODUCTS[selectedCategory].forEach(product => {
+          if (selectedBrand === 'all') {
+            // Sum up demand for all brands
+            const totalDemand = product.brands.reduce((sum, brand) => {
+              return sum + generateDemandData(product.name, monthIndex + 1, brand);
+            }, 0);
+            monthData[product.name] = totalDemand;
+          } else {
+            // Generate demand for specific brand
+            monthData[product.name] = generateDemandData(product.name, monthIndex + 1, selectedBrand);
+          }
+        });
+
+        data.push(monthData);
+      }
+
+      setForecastData(data);
+    };
+
+    generateForecastData();
+  }, [selectedCategory, viewMode, selectedBrand]);
 
   const fetchAllData = async () => {
     try {
@@ -344,6 +465,129 @@ export default function DashboardPage() {
               <span className="ml-2 font-semibold text-blue-600">{formatCurrency(prediction.predicted_price)}</span>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Demand Forecasting Section */}
+      <div className="bg-white rounded-xl shadow-lg p-6 mb-8 transform hover:shadow-xl transition-shadow duration-200">
+        <div className="flex flex-col space-y-4 sm:flex-row sm:space-y-0 justify-between items-center mb-6">
+          <div>
+            <h2 className="text-xl font-bold text-gray-800">Demand Forecasting</h2>
+            <p className="text-sm text-gray-600 mt-1">Product demand predictions by category and brand</p>
+          </div>
+          <div className="flex flex-wrap gap-4">
+            <select
+              value={viewMode}
+              onChange={(e) => setViewMode(e.target.value)}
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value="6months">Next 6 Months</option>
+              <option value="yearly">Full Year</option>
+            </select>
+            
+            <select
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setSelectedBrand('all');
+              }}
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              {Object.values(CATEGORIES).map(category => (
+                <option key={category} value={category}>{category}</option>
+              ))}
+            </select>
+
+            <select
+              value={selectedBrand}
+              onChange={(e) => setSelectedBrand(e.target.value)}
+              className="rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+            >
+              <option value="all">All Brands</option>
+              {CATEGORY_PRODUCTS[selectedCategory].flatMap(product => 
+                product.brands.map(brand => (
+                  <option key={brand} value={brand}>{brand}</option>
+                ))
+              ).filter((brand, index, self) => 
+                self.findIndex(b => b.props.value === brand.props.value) === index
+              )}
+            </select>
+          </div>
+        </div>
+
+        <div className="h-[400px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={forecastData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
+              <XAxis 
+                dataKey="month" 
+                tick={{ fill: '#4B5563', fontSize: 12 }}
+              />
+              <YAxis 
+                tick={{ fill: '#4B5563' }}
+                label={{ value: 'Predicted Demand (Units)', angle: -90, position: 'insideLeft' }}
+              />
+              <Tooltip 
+                formatter={(value, name) => [
+                  `${value} ${CATEGORY_PRODUCTS[selectedCategory].find(p => p.name === name)?.unit || 'units'}`,
+                  name
+                ]}
+                contentStyle={{ 
+                  backgroundColor: 'white',
+                  border: '1px solid #E5E7EB',
+                  borderRadius: '0.5rem',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Legend />
+              {CATEGORY_PRODUCTS[selectedCategory].map((product, index) => (
+                <Bar 
+                  key={product.name}
+                  dataKey={product.name}
+                  fill={CHART_COLORS[index % CHART_COLORS.length]}
+                  stackId="stack"
+                />
+              ))}
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Product-wise Forecast Table */}
+        <div className="mt-8 overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Brands
+                </th>
+                {forecastData.map(data => (
+                  <th key={data.month} className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    {data.month}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {CATEGORY_PRODUCTS[selectedCategory].map(product => (
+                <tr key={product.name} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                    {product.name}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {product.brands.join(', ')}
+                  </td>
+                  {forecastData.map(data => (
+                    <td key={`${data.month}-${product.name}`} className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {data[product.name]} {product.unit}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 

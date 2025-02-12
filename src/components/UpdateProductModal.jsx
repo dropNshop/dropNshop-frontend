@@ -36,7 +36,7 @@ export default function UpdateProductModal({ product, onClose, onSuccess }) {
     try {
       const response = await fetchCategories();
       setCategories(response.data);
-    } catch (error) {
+    } catch  {
       toast.error('Failed to load categories');
     }
   }, []);
