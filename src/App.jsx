@@ -9,7 +9,7 @@ import AddProductPage from './pages/AddProductPage';
 import ProductsPage from './pages/ProductsPage';
 
 function App() {
-  return (
+  return (    
     <AuthProvider>
       <Router>
         <Routes>
