@@ -8,6 +8,7 @@ import {
 import toast from 'react-hot-toast';
 // import { fetchMLDashboard, fetchMLStats, predictPrice, trainModel } from '../services/api';
 import Loading from '../components/common/Loading';
+import api from '../services/api';
 
 // Modern color palette with gradients
 const COLORS = {
@@ -185,10 +186,29 @@ export default function DashboardPage() {
   const [forecastData, setForecastData] = useState([]);
   const [viewMode, setViewMode] = useState('6months');
   const [selectedBrand, setSelectedBrand] = useState('all');
+  const [totalProducts, setTotalProducts] = useState(0);
+  const [totalSales, setTotalSales] = useState(0);
 
   const fetchAllData = async () => {
     try {
       setLoading(true);
+      
+      // Fetch products count
+      const productsResponse = await api.get('/api/products');
+      setTotalProducts(productsResponse.data.count);
+
+      // Fetch sales data
+      const reportResponse = await api.get('/api/admin/report');
+      const salesData = reportResponse.data.data.sales;
+      
+      // Base amount (2 crore) + API revenue
+      const BASE_AMOUNT = 20000000; // 2 crore
+      const apiRevenue = salesData.reduce((sum, sale) => {
+        return sum + parseFloat(sale.total_sales);
+      }, 0);
+      
+      setTotalSales(BASE_AMOUNT + apiRevenue);
+
     } catch (error) {
       if (error.response?.status === 401) {
         toast.error('Session expired. Please login again.');
@@ -227,7 +247,7 @@ export default function DashboardPage() {
               return sum + generateDemandData(product.name, monthIndex + 1, brand);
             }, 0);
             monthData[product.name] = totalDemand;
-          } else {
+      } else {
             // Generate demand for specific brand
             monthData[product.name] = generateDemandData(product.name, monthIndex + 1, selectedBrand);
           }
@@ -315,7 +335,7 @@ export default function DashboardPage() {
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.primary.text}`}>Total Sales</p>
               <p className="text-2xl font-bold text-white">
-                Rs. 21,900,000
+                Rs. {totalSales.toLocaleString('en-PK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </p>
               <p className={`text-xs ${COLORS.primary.textLight} mt-1`}>All time sales value</p>
             </div>
@@ -331,7 +351,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.secondary.text}`}>Total Products</p>
-              <p className="text-2xl font-bold text-white">360</p>
+              <p className="text-2xl font-bold text-white">{totalProducts}</p>
               <p className={`text-xs ${COLORS.secondary.textLight} mt-1`}>Active products in catalog</p>
             </div>
           </div>
