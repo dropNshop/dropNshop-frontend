@@ -136,19 +136,19 @@ const MANUAL_CATEGORY_SALES = [
 ];
 
 const MANUAL_TOP_PRODUCTS = [
-  { product: 'Basmati Rice (5kg)', sales: 180000, quantity: 2000, price: 450 },
-  { product: 'Cooking Oil (5L)', sales: 165000, quantity: 1800, price: 1250 },
-  { product: 'Tea (950g)', sales: 145000, quantity: 2500, price: 580 },
-  { product: 'Pulses Mix (1kg)', sales: 125000, quantity: 2800, price: 320 },
-  { product: 'Spices Pack', sales: 115000, quantity: 3200, price: 180 },
-  { product: 'Chocolate Assorted', sales: 95000, quantity: 1500, price: 350 },
-  { product: 'Cigarettes Pack', sales: 85000, quantity: 1200, price: 420 },
-  { product: 'Beverages (1.5L)', sales: 75000, quantity: 2000, price: 150 },
-  { product: 'Ice Cream Family Pack', sales: 65000, quantity: 1000, price: 650 },
-  { product: 'Detergent (1kg)', sales: 55000, quantity: 1500, price: 220 },
-  { product: 'Dry Fruits Mix (500g)', sales: 45000, quantity: 800, price: 850 },
-  { product: 'Snacks Variety', sales: 35000, quantity: 2500, price: 50 },
-  { product: 'Flour (10kg)', sales: 125000, quantity: 1800, price: 950 }
+  { product: 'Basmati Rice (5kg)', sales: 287500, quantity: 250, price: 1150 },
+  { product: 'Cooking Oil (5L)', sales: 261000, quantity: 180, price: 1450 },
+  { product: 'Tea (950g)', sales: 230400, quantity: 320, price: 720 },
+  { product: 'Flour (10kg)', sales: 238000, quantity: 280, price: 850 },
+  { product: 'Pulses Mix (1kg)', sales: 114800, quantity: 410, price: 280 },
+  { product: 'Sugar (1kg)', sales: 87000, quantity: 580, price: 150 },
+  { product: 'Milk (1L)', sales: 153000, quantity: 850, price: 180 },
+  { product: 'Spices Pack (200g)', sales: 67200, quantity: 420, price: 160 },
+  { product: 'Eggs (dozen)', sales: 117000, quantity: 650, price: 180 },
+  { product: 'Bread (large)', sales: 86400, quantity: 720, price: 120 },
+  { product: 'Yogurt (1kg)', sales: 60800, quantity: 380, price: 160 },
+  { product: 'Salt (1kg)', sales: 40800, quantity: 480, price: 85 },
+  { product: 'Detergent (1kg)', sales: 55000, quantity: 250, price: 220 }
 ];
 
 // ============ Data Processing Functions ============
