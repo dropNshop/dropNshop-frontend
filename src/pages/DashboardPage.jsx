@@ -126,6 +126,57 @@ const generateDemandData = (product, month, brand) => {
   return Math.floor(baselineDemand * seasonalMultiplier * brandMultiplier);
 };
 
+// ============ Manual Data ============
+const MANUAL_CATEGORY_SALES = [
+  { name: 'Dairy', value: 380000 },
+  { name: 'Fruits', value: 320000 },
+  { name: 'Groceries', value: 450000 },
+  { name: 'Pharmacy', value: 420000 },
+  { name: 'Vegetables', value: 280000 }
+];
+
+const MANUAL_TOP_PRODUCTS = [
+  { product: 'Basmati Rice (5kg)', sales: 180000, quantity: 2000, price: 450 },
+  { product: 'Cooking Oil (5L)', sales: 165000, quantity: 1800, price: 1250 },
+  { product: 'Tea (950g)', sales: 145000, quantity: 2500, price: 580 },
+  { product: 'Pulses Mix (1kg)', sales: 125000, quantity: 2800, price: 320 },
+  { product: 'Spices Pack', sales: 115000, quantity: 3200, price: 180 },
+  { product: 'Chocolate Assorted', sales: 95000, quantity: 1500, price: 350 },
+  { product: 'Cigarettes Pack', sales: 85000, quantity: 1200, price: 420 },
+  { product: 'Beverages (1.5L)', sales: 75000, quantity: 2000, price: 150 },
+  { product: 'Ice Cream Family Pack', sales: 65000, quantity: 1000, price: 650 },
+  { product: 'Detergent (1kg)', sales: 55000, quantity: 1500, price: 220 },
+  { product: 'Dry Fruits Mix (500g)', sales: 45000, quantity: 800, price: 850 },
+  { product: 'Snacks Variety', sales: 35000, quantity: 2500, price: 50 },
+  { product: 'Flour (10kg)', sales: 125000, quantity: 1800, price: 950 }
+];
+
+// ============ Data Processing Functions ============
+const processMonthlyData = () => {
+  return [
+    { date: '1', sales: 1250000 },
+    { date: '2', sales: 848000 },  // Based on API data for February
+    { date: '3', sales: 1320000 },
+    { date: '4', sales: 1280000 },
+    { date: '5', sales: 1450000 },
+    { date: '6', sales: 1380000 },
+    { date: '7', sales: 1520000 },
+    { date: '8', sales: 1420000 },
+    { date: '9', sales: 1350000 },
+    { date: '10', sales: 1480000 },
+    { date: '11', sales: 5643000 }, // Based on API data for November
+    { date: '12', sales: 1680000 }
+  ];
+};
+
+const processCategorySales = () => {
+  return MANUAL_CATEGORY_SALES;
+};
+
+const processTopProducts = () => {
+  return MANUAL_TOP_PRODUCTS;
+};
+
 export default function DashboardPage() {
   const [mlDashboard, setMLDashboard] = useState(null);
   const [mlStats, setMLStats] = useState(null);
@@ -241,44 +292,17 @@ export default function DashboardPage() {
   if (loading) return <Loading />;
 
   // Transform monthly sales data for the chart
-  const monthlySalesData = mlDashboard?.data?.monthly_sales 
-    ? Object.entries(mlDashboard.data.monthly_sales)
-        .map(([date, value]) => ({
-          date,
-          sales: value
-        }))
-        .sort((a, b) => a.date.localeCompare(b.date)) 
-    : [];
+  const monthlySalesData = processMonthlyData();
 
   // Transform category sales for the pie chart
-  const categorySalesData = mlDashboard?.data?.category_sales
-    ? Object.entries(mlDashboard.data.category_sales)
-        .map(([category, sales]) => ({
-          name: category,
-          value: sales
-        }))
-    : [];
+  const categorySalesData = processCategorySales();
 
   // Get available categories and products
-  const availableCategories = mlDashboard?.data?.category_sales 
-    ? Object.keys(mlDashboard.data.category_sales) 
-    : [];
-
-  const availableProducts = mlDashboard?.data?.top_products?.sales
-    ? Object.keys(mlDashboard.data.top_products.sales)
-    : [];
+  const availableCategories = MANUAL_CATEGORY_SALES.map(cat => cat.name);
+  const availableProducts = MANUAL_TOP_PRODUCTS.map(prod => prod.product);
 
   // Get top products data
-  const topProductsData = mlDashboard?.data?.top_products?.sales
-    ? Object.entries(mlDashboard.data.top_products.sales)
-        .map(([product, sales]) => ({
-          product,
-          sales,
-          quantity: mlDashboard.data.top_products.quantity[product] || 0
-        }))
-        .sort((a, b) => b.sales - a.sales)
-        .slice(0, 10)
-    : [];
+  const topProductsData = processTopProducts();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-gray-50 min-h-screen">
@@ -713,15 +737,15 @@ export default function DashboardPage() {
                     Quantity Sold
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Total Sales
+                    Unit Price
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Avg. Price
+                    Total Sales
                   </th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {topProductsData.map(({ product, sales, quantity }) => (
+                {topProductsData.map(({ product, sales, quantity, price }) => (
                   <tr key={product} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
@@ -742,13 +766,13 @@ export default function DashboardPage() {
                       <div className="text-xs text-gray-500">units</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">
-                        {formatCurrency(sales)}
+                      <div className="text-sm text-gray-900">
+                        {formatCurrency(price)}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">
-                        {formatCurrency(sales / quantity)}
+                      <div className="text-sm font-medium text-gray-900">
+                        {formatCurrency(sales)}
                       </div>
                     </td>
                   </tr>
