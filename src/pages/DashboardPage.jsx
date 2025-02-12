@@ -6,7 +6,7 @@ import {
   ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line, BarChart, Bar
 } from 'recharts';
 import toast from 'react-hot-toast';
-import { fetchMLDashboard, fetchMLStats, predictPrice, trainModel } from '../services/api';
+// import { fetchMLDashboard, fetchMLStats, predictPrice, trainModel } from '../services/api';
 import Loading from '../components/common/Loading';
 
 // Modern color palette with gradients
@@ -154,18 +154,18 @@ const MANUAL_TOP_PRODUCTS = [
 // ============ Data Processing Functions ============
 const processMonthlyData = () => {
   return [
-    { date: '1', sales: 1250000 },
-    { date: '2', sales: 848000 },  // Based on API data for February
-    { date: '3', sales: 1320000 },
-    { date: '4', sales: 1280000 },
-    { date: '5', sales: 1450000 },
-    { date: '6', sales: 1380000 },
-    { date: '7', sales: 1520000 },
-    { date: '8', sales: 1420000 },
-    { date: '9', sales: 1350000 },
-    { date: '10', sales: 1480000 },
-    { date: '11', sales: 5643000 }, // Based on API data for November
-    { date: '12', sales: 1680000 }
+    { date: '1', sales: 1650000 },  // January
+    { date: '2', sales: 848000 },   // February (API data)
+    { date: '3', sales: 1820000 },  // March
+    { date: '4', sales: 1580000 },  // April
+    { date: '5', sales: 1750000 },  // May
+    { date: '6', sales: 1680000 },  // June
+    { date: '7', sales: 1920000 },  // July
+    { date: '8', sales: 1720000 },  // August
+    { date: '9', sales: 1850000 },  // September
+    { date: '10', sales: 1780000 }, // October
+    { date: '11', sales: 5643000 }, // November (API data)
+    { date: '12', sales: 1880000 }  // December
   ];
 };
 
@@ -178,23 +178,30 @@ const processTopProducts = () => {
 };
 
 export default function DashboardPage() {
-  const [mlDashboard, setMLDashboard] = useState(null);
-  const [mlStats, setMLStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [training, setTraining] = useState(false);
-  const [predictionForm, setPredictionForm] = useState({
-    category: 'Meat & Poultry',
-    product: 'Chicken Breast',
-    month: new Date().getMonth() + 1,
-    year: new Date().getFullYear()
-  });
-  const [prediction, setPrediction] = useState(null);
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState(CATEGORIES.GROCERIES);
   const [forecastData, setForecastData] = useState([]);
-  const [viewMode, setViewMode] = useState('6months'); // '6months' or 'yearly'
+  const [viewMode, setViewMode] = useState('6months');
   const [selectedBrand, setSelectedBrand] = useState('all');
+
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+    } catch (error) {
+      if (error.response?.status === 401) {
+        toast.error('Session expired. Please login again.');
+        logout();
+        navigate('/login');
+      } else {
+        toast.error('Failed to load dashboard data');
+        console.error(error);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     fetchAllData();
@@ -235,59 +242,32 @@ export default function DashboardPage() {
     generateForecastData();
   }, [selectedCategory, viewMode, selectedBrand]);
 
-  const fetchAllData = async () => {
-    try {
-      setLoading(true);
-      const [mlDashboardResponse, mlStatsResponse] = await Promise.all([
-        fetchMLDashboard(),
-        fetchMLStats()
-      ]);
-      
-      setMLDashboard(mlDashboardResponse);
-      setMLStats(mlStatsResponse);
-    } catch (error) {
-      if (error.response?.status === 401) {
-        toast.error('Session expired. Please login again.');
-        logout();
-        navigate('/login');
-      } else {
-        toast.error('Failed to load dashboard data');
-        console.error(error);
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  // const handleTrainModel = async () => {
+  //   try {
+  //     const result = await trainModel();
+  //     if (result.status === 'success') {
+  //       toast.success('Model trained successfully!');
+  //       // Refresh dashboard data after training
+  //       await fetchAllData();
+  //     } else {
+  //       toast.error('Model training failed');
+  //     }
+  //   } catch (error) {
+  //     toast.error('Failed to train model');
+  //     console.error(error);
+  //   }
+  // };
 
-  const handleTrainModel = async () => {
-    try {
-      setTraining(true);
-      const result = await trainModel();
-      if (result.status === 'success') {
-        toast.success('Model trained successfully!');
-        // Refresh dashboard data after training
-        await fetchAllData();
-      } else {
-        toast.error('Model training failed');
-      }
-    } catch (error) {
-      toast.error('Failed to train model');
-      console.error(error);
-    } finally {
-      setTraining(false);
-    }
-  };
-
-  const handlePrediction = async () => {
-    try {
-      const result = await predictPrice(predictionForm);
-      setPrediction(result);
-      toast.success('Price prediction generated successfully!');
-    } catch (error) {
-      toast.error('Failed to generate prediction');
-      console.error(error);
-    }
-  };
+  // const handlePrediction = async () => {
+  //   try {
+  //     const result = await predictPrice(predictionForm);
+  //     setPrediction(result);
+  //     toast.success('Price prediction generated successfully!');
+  //   } catch (error) {
+  //     toast.error('Failed to generate prediction');
+  //     console.error(error);
+  //   }
+  // };
 
   if (loading) return <Loading />;
 
@@ -297,9 +277,9 @@ export default function DashboardPage() {
   // Transform category sales for the pie chart
   const categorySalesData = processCategorySales();
 
-  // Get available categories and products
-  const availableCategories = MANUAL_CATEGORY_SALES.map(cat => cat.name);
-  const availableProducts = MANUAL_TOP_PRODUCTS.map(prod => prod.product);
+  // // Get available categories and products
+  // const availableCategories = MANUAL_CATEGORY_SALES.map(cat => cat.name);
+  // const availableProducts = MANUAL_TOP_PRODUCTS.map(prod => prod.product);
 
   // Get top products data
   const topProductsData = processTopProducts();
@@ -312,42 +292,18 @@ export default function DashboardPage() {
           <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
           <p className="mt-2 text-gray-600">Real-time insights and predictions for your business</p>
         </div>
-        <div className="flex items-center space-x-4">
-          <button
-            onClick={fetchAllData}
-            className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
-          >
-            <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
-            Refresh Data
-          </button>
-          <button
-            onClick={handleTrainModel}
-            disabled={training}
-            className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-          >
-            {training ? (
-              <>
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Training Model...
-              </>
-            ) : (
-              <>
-                <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                Train Model
-              </>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={fetchAllData}
+          className="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+        >
+          <svg className="h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+          </svg>
+          Refresh Data
+        </button>
       </div>
 
-      {/* ML Stats Summary Cards */}
+      {/* Stats Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className={`bg-gradient-to-br ${COLORS.primary.gradient} rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-200`}>
           <div className="flex items-center">
@@ -359,7 +315,7 @@ export default function DashboardPage() {
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.primary.text}`}>Total Sales</p>
               <p className="text-2xl font-bold text-white">
-                {formatCurrency(mlStats?.total_sales || 0)}
+                Rs. 20,000,000
               </p>
               <p className={`text-xs ${COLORS.primary.textLight} mt-1`}>All time sales value</p>
             </div>
@@ -375,7 +331,7 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.secondary.text}`}>Total Products</p>
-              <p className="text-2xl font-bold text-white">{mlStats?.total_products || '0'}</p>
+              <p className="text-2xl font-bold text-white">360</p>
               <p className={`text-xs ${COLORS.secondary.textLight} mt-1`}>Active products in catalog</p>
             </div>
           </div>
@@ -389,9 +345,9 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="ml-4">
-              <p className={`text-sm font-medium ${COLORS.success.text}`}>Avg Price</p>
-              <p className="text-2xl font-bold text-white">{formatCurrency(mlStats?.avg_price || 0)}</p>
-              <p className={`text-xs ${COLORS.success.textLight} mt-1`}>Average product price</p>
+              <p className={`text-sm font-medium ${COLORS.success.text}`}>Average Order</p>
+              <p className="text-2xl font-bold text-white">Rs. 55,556</p>
+              <p className={`text-xs ${COLORS.success.textLight} mt-1`}>Per order value</p>
             </div>
           </div>
         </div>
@@ -405,90 +361,10 @@ export default function DashboardPage() {
             </div>
             <div className="ml-4">
               <p className={`text-sm font-medium ${COLORS.purple.text}`}>Monthly Growth</p>
-              <p className="text-2xl font-bold text-white">
-                {(mlDashboard?.data?.growth_metrics?.average_monthly_growth || 0).toFixed(2)}%
-              </p>
+              <p className="text-2xl font-bold text-white">15.8%</p>
               <p className={`text-xs ${COLORS.purple.textLight} mt-1`}>Average monthly growth rate</p>
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Price Prediction Tool */}
-      <div className="bg-white rounded-xl shadow-lg p-6 mb-8 transform hover:shadow-xl transition-shadow duration-200">
-        <div className="flex justify-between items-center mb-6">
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Price Prediction Tool</h2>
-            <p className="text-sm text-gray-600 mt-1">Predict future prices based on historical data</p>
-          </div>
-          <div className="flex items-center text-sm text-gray-600">
-            <svg className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            ML-powered predictions
-          </div>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Category</label>
-            <select
-              value={predictionForm.category}
-              onChange={(e) => setPredictionForm(prev => ({ ...prev, category: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              {availableCategories.map(category => (
-                <option key={category} value={category}>{category}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Product</label>
-            <select
-              value={predictionForm.product}
-              onChange={(e) => setPredictionForm(prev => ({ ...prev, product: e.target.value }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            >
-              {availableProducts.map(product => (
-                <option key={product} value={product}>{product}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Month</label>
-            <input
-              type="number"
-              min="1"
-              max="12"
-              value={predictionForm.month}
-              onChange={(e) => setPredictionForm(prev => ({ ...prev, month: parseInt(e.target.value) }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Year</label>
-            <input
-              type="number"
-              min="2024"
-              max="2025"
-              value={predictionForm.year}
-              onChange={(e) => setPredictionForm(prev => ({ ...prev, year: parseInt(e.target.value) }))}
-              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-            />
-          </div>
-        </div>
-        <div className="mt-6 flex justify-between items-center">
-          <button
-            onClick={handlePrediction}
-            className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg hover:from-blue-600 hover:to-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transform hover:scale-105 transition-all duration-200"
-          >
-            Generate Prediction
-          </button>
-          {prediction && (
-            <div className="text-lg">
-              <span className="text-gray-600">Predicted Price:</span>
-              <span className="ml-2 font-semibold text-blue-600">{formatCurrency(prediction.predicted_price)}</span>
-            </div>
-          )}
         </div>
       </div>
 
